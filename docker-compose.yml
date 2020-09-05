@@ -1,0 +1,59 @@
+version: '3'
+services:
+  nginx:
+    image: nginx
+    restart: always
+    ports:
+      - "8081:80"
+    volumes:
+      - ./.docker/nginx/nginx.conf:/etc/nginx/conf.d/a-websocket.conf
+      - .:/home/websocket/project:ro
+
+  websocket-app:
+    # sudo docker inspect websocket-app -> 172.19.0.1:8081 -> mqtt.sample:8081
+    build: ./.docker/php/
+    container_name: websocket-app
+    command: >
+      bash -c "chown -R websocket:websocket /home/websocket/project && php-fpm"
+    volumes:
+      - .:/home/websocket/project
+      - ./.docker/php/php-fpm.conf:/usr/local/etc/php-fpm.d/www.conf
+
+  db:
+    image: mariadb:10.2
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: websocket_db
+      MYSQL_USER: websocket_user
+      MYSQL_PASSWORD: websocket_pass
+    logging:
+      driver: syslog
+      options:
+        tag: "{{.DaemonName}}(image={{.ImageName}};name={{.Name}};id={{.ID}})"
+    restart: on-failure
+    volumes:
+      - ../db:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  emqtt:
+    image: emqx/emqx:v3.0.0
+    # http://127.0.0.1:18083 -> User: admin, Pass: public
+    # https://docs.emqx.io/tutorial/v3/en
+    environment:
+      - EMQX_LOADED_PLUGINS="emqx_management,emqx_auth_http,emqx_recon,emqx_retainer,emqx_dashboard"
+      - EMQX_AUTH__HTTP__AUTH_REQ=http://nginx/api/emqtt/login
+      - EMQX_AUTH__HTTP__AUTH_REQ__METHOD=post
+      - EMQX_AUTH__HTTP__AUTH_REQ__PARAMS=clientid=%c,username=%u,password=%P
+      - EMQX_AUTH__HTTP__ACL_REQ=http://nginx/api/emqtt/acl
+      - EMQX_AUTH__HTTP__ACL_REQ__METHOD=post
+      - EMQX_AUTH__HTTP__ACL_REQ__PARAMS=access=%A,username=%u,clientid=%c,ipaddr=%a,topic=%t
+      - EMQX_AUTH__HTTP__SUPER_REQ=http://nginx/api/emqtt/superuser
+      - EMQX_AUTH__HTTP__SUPER_REQ__METHOD=post
+      - EMQX_AUTH__HTTP__SUPER_REQ__PARAMS=clientid=%c,username=%u,ipaddress=%a
+    ports:
+      - "18083:18083"
+      - "1883:1883"
+      - "8083:8083"
+      - "8883:8883"
+

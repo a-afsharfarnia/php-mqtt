@@ -1,0 +1,9 @@
+websocket_api_student:
+  resource:   "@SampleBundle/Controller/StudentController.php"
+  type:       annotation
+  prefix:     /student
+
+websocket_api_emqtt:
+  resource:   "@SampleBundle/Controller/EmqttController.php"
+  type:       annotation
+  prefix:     /emqtt

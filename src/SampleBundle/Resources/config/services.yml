@@ -1,0 +1,6 @@
+services:
+  SampleBundle\Repository\StudentRepository:
+    class:   SampleBundle\Repository\StudentRepository
+    factory: 'Doctrine\ORM\EntityManagerInterface:getRepository'
+    arguments:
+      - SampleBundle\Entity\Student
